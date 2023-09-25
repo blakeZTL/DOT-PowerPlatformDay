@@ -1,0 +1,1068 @@
+nfxVersion = "V1.1.2.12";
+nfxAppDarker = RGBA(
+    27,
+    41,
+    56,
+    1
+);
+nfxAppDarkerTrans = RGBA(
+    27,
+    41,
+    56,
+    .4
+);
+nfxAppDark = RGBA(
+    30,
+    45,
+    62,
+    1
+);
+nfxAppBlue = RGBA(
+    0,
+    121,
+    187,
+    1
+);
+nfxAppGrey = RGBA(
+    47,
+    61,
+    64,
+    1
+);
+nfxAppLogoGrey = ColorValue("#3d5a73");
+nfxTestDate = Today();
+nfxNTI = Filter(
+    'Eagle Eye NTIs',
+    Facility = gblFacility
+);
+nfxScheduleControllersNoTMU = ShowColumns(
+    Filter(
+        'Eagle Eye Schedules',
+        Facility = gblFacility,
+        'Area Name' = dpdn_Today_AreaSelect.Selected.Area,
+        'Eagle Eye Schedules (Views)'.Controllers
+    ),
+    "cr788_areaname",
+    "cr788_employeename",
+    "cr788_opinits",
+    "cr788_facility",
+    "cr788_shiftstartdate",
+    "cr788_shifttype",
+    "cr788_staffingcategory",
+    "cr788_shiftstarttime",
+    "cr788_shiftstoptime",
+    "cr788_shiftstopdate"
+);
+nfxScheduleOnlyManagement = ShowColumns(
+    Filter(
+        'Eagle Eye Schedules',
+        Facility = gblFacility,
+        'Area Name' = dpdn_Today_AreaSelect.Selected.Area,
+        'Eagle Eye Schedules (Views)'.Management
+    ),
+    "cr788_areaname",
+    "cr788_employeename",
+    "cr788_opinits",
+    "cr788_facility",
+    "cr788_shiftstartdate",
+    "cr788_shifttype",
+    "cr788_staffingcategory",
+    "cr788_shiftstarttime",
+    "cr788_shiftstoptime",
+    "cr788_shiftstopdate"
+);
+nfxScheduleOnlyTMU = ShowColumns(
+    Filter(
+        'Eagle Eye Schedules',
+        Facility = gblFacility,
+        'Area Name' = dpdn_Today_AreaSelect.Selected.Area,
+        'Eagle Eye Schedules (Views)'.TMU
+    ),
+    "cr788_areaname",
+    "cr788_employeename",
+    "cr788_opinits",
+    "cr788_facility",
+    "cr788_shiftstartdate",
+    "cr788_shifttype",
+    "cr788_staffingcategory",
+    "cr788_shiftstarttime",
+    "cr788_shiftstoptime",
+    "cr788_shiftstopdate"
+);
+nfxScheduleControllersWithTMU = ShowColumns(
+    Filter(
+        'Eagle Eye Schedules',
+        Facility = gblFacility,
+        'Area Name' = dpdn_Today_AreaSelect.Selected.Area,
+        'Eagle Eye Schedules (Views)'.ControllersARTCC
+    ),
+    "cr788_areaname",
+    "cr788_employeename",
+    "cr788_opinits",
+    "cr788_facility",
+    "cr788_shiftstartdate",
+    "cr788_shifttype",
+    "cr788_staffingcategory",
+    "cr788_shiftstarttime",
+    "cr788_shiftstoptime",
+    "cr788_shiftstopdate"
+);
+nfxScheduleControllers = With(
+    {
+        wthControllerData: Switch(
+            gblScheduleType,
+            "ARTCC",
+            nfxScheduleControllersWithTMU,
+            "TWR",
+            nfxScheduleControllersNoTMU,
+            "TRACON",
+            nfxScheduleControllersNoTMU
+        )
+    },
+    With(
+        {
+            wthShiftTypes: ForAll(Distinct(
+                SortByColumns(
+                    Filter(
+                        wthControllerData,
+                        Text(
+                            cr788_shiftstartdate,
+                            DateTimeFormat.ShortDate
+                        ) = Switch(
+                            gblStaffingRef,
+                            "TODAY",
+                            Text(
+                                nfxTestDate,
+                                DateTimeFormat.ShortDate
+                            ),
+                            "YESTERDAY",
+                            Text(
+                                DateAdd(
+                                    nfxTestDate,
+                                    -1
+                                ),
+                                DateTimeFormat.ShortDate
+                            ),
+                            "TOMORROW",
+                            Text(
+                                DateAdd(
+                                    nfxTestDate,
+                                    1
+                                ),
+                                DateTimeFormat.ShortDate
+                            )
+                        )
+                    ),
+                    "cr788_shifttype",
+                    [
+                        "Early Morning",
+                        "Morning",
+                        "Mid-Day",
+                        "Evening",
+                        "Mid Shift"
+                    ]
+                ),
+                cr788_shifttype
+            ), {Result: ThisRecord.Value})
+        },
+        ForAll(
+            wthShiftTypes.Result As ShiftType,
+            {
+                ShiftType: ShiftType.Result,
+                ShiftData: With(
+                    {
+                        wthShiftData: Switch(
+                            gblStaffingRef,
+                            "TODAY",
+                            With(
+                                {
+                                    wthToday: Filter(
+                                        wthControllerData,
+                                        Text(
+                                            cr788_shiftstartdate,
+                                            DateTimeFormat.ShortDate
+                                        ) = Text(
+                                            nfxTestDate,
+                                            DateTimeFormat.ShortDate
+                                        ),
+                                        cr788_shifttype = ShiftType.Result,
+                                        cr788_areaname = dpdn_Today_AreaSelect.Selected.Area
+                                    )
+                                },
+                                ForAll(
+                                    Sort(
+                                        ForAll(Distinct(
+                                            wthToday,
+                                            cr788_staffingcategory
+                                        ), {Result: ThisRecord.Value}),
+                                        Result
+                                    ) As staffCat,
+                                    {
+                                        StaffCat: staffCat.Result,
+                                        StaffCount: CountRows(
+                                            Filter(
+                                                wthToday,
+                                                cr788_staffingcategory = staffCat.Result
+                                            )
+                                        ),
+                                        ShiftType: ShiftType.Result,
+                                        EmployeeList: Concat(
+                                            SortByColumns(
+                                                Filter(
+                                                    wthToday,
+                                                    staffCat.Result = cr788_staffingcategory
+                                                ),
+                                                "cr788_shiftstarttime",
+                                                SortOrder.Ascending,
+                                                "cr788_shiftstoptime",
+                                                SortOrder.Ascending,
+                                                "cr788_employeename",
+                                                SortOrder.Ascending
+                                            ),
+                                            Concatenate(
+                                                cr788_shiftstarttime,
+                                                " - ",
+                                                cr788_shiftstoptime,
+                                                If(
+                                                    cr788_shiftstopdate <> cr788_shiftstartdate,
+                                                    Concatenate(
+                                                        " (Ends on ",
+                                                        Text(
+                                                            cr788_shiftstopdate,
+                                                            DateTimeFormat.ShortDate
+                                                        ),
+                                                        ")"
+                                                    )
+                                                ),
+                                                ": ",
+                                                cr788_opinits,
+                                                " - ",
+                                                cr788_employeename
+                                            ),
+                                            Char(10)
+                                        )
+                                    }
+                                )
+                            ),
+                            "YESTERDAY",
+                            With(
+                                {
+                                    wthYesterday: Filter(
+                                        wthControllerData,
+                                        Text(
+                                            cr788_shiftstartdate,
+                                            DateTimeFormat.ShortDate
+                                        ) = Text(
+                                            DateAdd(
+                                                nfxTestDate,
+                                                -1
+                                            ),
+                                            DateTimeFormat.ShortDate
+                                        ),
+                                        cr788_shifttype = ShiftType.Result,
+                                        cr788_areaname = dpdn_Today_AreaSelect.Selected.Area
+                                    )
+                                },
+                                ForAll(
+                                    Sort(
+                                        ForAll(Distinct(
+                                            wthYesterday,
+                                            cr788_staffingcategory
+                                        ), {Result: ThisRecord.Value}),
+                                        Result
+                                    ) As staffCat,
+                                    {
+                                        StaffCat: staffCat.Result,
+                                        StaffCount: CountRows(
+                                            Filter(
+                                                wthYesterday,
+                                                cr788_staffingcategory = staffCat.Result
+                                            )
+                                        ),
+                                        ShiftType: ShiftType.Result,
+                                        EmployeeList: Concat(
+                                            SortByColumns(
+                                                Filter(
+                                                    wthYesterday,
+                                                    staffCat.Result = cr788_staffingcategory
+                                                ),
+                                                "cr788_shiftstarttime",
+                                                SortOrder.Ascending,
+                                                "cr788_shiftstoptime",
+                                                SortOrder.Ascending,
+                                                "cr788_employeename",
+                                                SortOrder.Ascending
+                                            ),
+                                            Concatenate(
+                                                cr788_shiftstarttime,
+                                                " - ",
+                                                cr788_shiftstoptime,
+                                                If(
+                                                    cr788_shiftstopdate <> cr788_shiftstartdate,
+                                                    Concatenate(
+                                                        " (Ends on ",
+                                                        Text(
+                                                            cr788_shiftstopdate,
+                                                            DateTimeFormat.ShortDate
+                                                        ),
+                                                        ")"
+                                                    )
+                                                ),
+                                                ": ",
+                                                cr788_opinits,
+                                                " - ",
+                                                cr788_employeename
+                                            ),
+                                            Char(10)
+                                        )
+                                    }
+                                )
+                            ),
+                            "TOMORROW",
+                            With(
+                                {
+                                    wthTomorrow: Filter(
+                                        wthControllerData,
+                                        Text(
+                                            cr788_shiftstartdate,
+                                            DateTimeFormat.ShortDate
+                                        ) = Text(
+                                            DateAdd(
+                                                nfxTestDate,
+                                                1
+                                            ),
+                                            DateTimeFormat.ShortDate
+                                        ),
+                                        cr788_shifttype = ShiftType.Result,
+                                        cr788_areaname = dpdn_Today_AreaSelect.Selected.Area
+                                    )
+                                },
+                                ForAll(
+                                    Sort(
+                                        ForAll(Distinct(
+                                            wthTomorrow,
+                                            cr788_staffingcategory
+                                        ), {Result: ThisRecord.Value}),
+                                        Result
+                                    ) As staffCat,
+                                    {
+                                        StaffCat: staffCat.Result,
+                                        StaffCount: CountRows(
+                                            Filter(
+                                                wthTomorrow,
+                                                cr788_staffingcategory = staffCat.Result
+                                            )
+                                        ),
+                                        ShiftType: ShiftType.Result,
+                                        EmployeeList: Concat(
+                                            SortByColumns(
+                                                Filter(
+                                                    wthTomorrow,
+                                                    staffCat.Result = cr788_staffingcategory
+                                                ),
+                                                "cr788_shiftstarttime",
+                                                SortOrder.Ascending,
+                                                "cr788_shiftstoptime",
+                                                SortOrder.Ascending,
+                                                "cr788_employeename",
+                                                SortOrder.Ascending
+                                            ),
+                                            Concatenate(
+                                                cr788_shiftstarttime,
+                                                " - ",
+                                                cr788_shiftstoptime,
+                                                If(
+                                                    cr788_shiftstopdate <> cr788_shiftstartdate,
+                                                    Concatenate(
+                                                        " (Ends on ",
+                                                        Text(
+                                                            cr788_shiftstopdate,
+                                                            DateTimeFormat.ShortDate
+                                                        ),
+                                                        ")"
+                                                    )
+                                                ),
+                                                ": ",
+                                                cr788_opinits,
+                                                " - ",
+                                                cr788_employeename
+                                            ),
+                                            Char(10)
+                                        )
+                                    }
+                                )
+                            )
+                        )
+                    },
+                    If(
+                        !IsBlank(wthShiftData),
+                        wthShiftData
+                    )
+                )
+            }
+        )
+    )
+);
+nfxScheduleManagement = With(
+    {
+        wthManagementData: Switch(
+            gblScheduleType,
+            "ARTCC",
+            nfxScheduleOnlyManagement,
+            "TWR",
+            nfxScheduleOnlyManagement,
+            "TRACON",
+            nfxScheduleOnlyManagement
+        )
+    },
+    With(
+        {
+            wthShiftTypes: ForAll(Distinct(
+                SortByColumns(
+                    Filter(
+                        wthManagementData,
+                        Text(
+                            cr788_shiftstartdate,
+                            DateTimeFormat.ShortDate
+                        ) = Switch(
+                            gblStaffingRef,
+                            "TODAY",
+                            Text(
+                                nfxTestDate,
+                                DateTimeFormat.ShortDate
+                            ),
+                            "YESTERDAY",
+                            Text(
+                                DateAdd(
+                                    nfxTestDate,
+                                    -1
+                                ),
+                                DateTimeFormat.ShortDate
+                            ),
+                            "TOMORROW",
+                            Text(
+                                DateAdd(
+                                    nfxTestDate,
+                                    1
+                                ),
+                                DateTimeFormat.ShortDate
+                            )
+                        )
+                    ),
+                    "cr788_shifttype",
+                    [
+                        "Early Morning",
+                        "Morning",
+                        "Mid-Day",
+                        "Evening",
+                        "Mid Shift"
+                    ]
+                ),
+                cr788_shifttype
+            ), {Result: ThisRecord.Value})
+        },
+        ForAll(
+            wthShiftTypes.Result As ShiftType,
+            {
+                ShiftType: ShiftType.Result,
+                ShiftData: With(
+                    {
+                        wthShiftData: Switch(
+                            gblStaffingRef,
+                            "TODAY",
+                            With(
+                                {
+                                    wthToday: Filter(
+                                        wthManagementData,
+                                        Text(
+                                            cr788_shiftstartdate,
+                                            DateTimeFormat.ShortDate
+                                        ) = Text(
+                                            nfxTestDate,
+                                            DateTimeFormat.ShortDate
+                                        ),
+                                        cr788_shifttype = ShiftType.Result,
+                                        cr788_areaname = dpdn_Today_AreaSelect.Selected.Area
+                                    )
+                                },
+                                ForAll(
+                                    Sort(
+                                        ForAll(Distinct(
+                                            wthToday,
+                                            cr788_staffingcategory
+                                        ), {Result: ThisRecord.Value}),
+                                        Result
+                                    ) As staffCat,
+                                    {
+                                        StaffCat: staffCat.Result,
+                                        StaffCount: CountRows(
+                                            Filter(
+                                                wthToday,
+                                                cr788_staffingcategory = staffCat.Result
+                                            )
+                                        ),
+                                        ShiftType: ShiftType.Result,
+                                        EmployeeList: Concat(
+                                            SortByColumns(
+                                                Filter(
+                                                    wthToday,
+                                                    staffCat.Result = cr788_staffingcategory
+                                                ),
+                                                "cr788_shiftstarttime",
+                                                SortOrder.Ascending,
+                                                "cr788_shiftstoptime",
+                                                SortOrder.Ascending,
+                                                "cr788_employeename",
+                                                SortOrder.Ascending
+                                            ),
+                                            Concatenate(
+                                                cr788_shiftstarttime,
+                                                " - ",
+                                                cr788_shiftstoptime,
+                                                If(
+                                                    cr788_shiftstopdate <> cr788_shiftstartdate,
+                                                    Concatenate(
+                                                        " (Ends on ",
+                                                        Text(
+                                                            cr788_shiftstopdate,
+                                                            DateTimeFormat.ShortDate
+                                                        ),
+                                                        ")"
+                                                    )
+                                                ),
+                                                ": ",
+                                                cr788_opinits,
+                                                " - ",
+                                                cr788_employeename
+                                            ),
+                                            Char(10)
+                                        )
+                                    }
+                                )
+                            ),
+                            "YESTERDAY",
+                            With(
+                                {
+                                    wthYesterday: Filter(
+                                        wthManagementData,
+                                        Text(
+                                            cr788_shiftstartdate,
+                                            DateTimeFormat.ShortDate
+                                        ) = Text(
+                                            DateAdd(
+                                                nfxTestDate,
+                                                -1
+                                            ),
+                                            DateTimeFormat.ShortDate
+                                        ),
+                                        cr788_shifttype = ShiftType.Result,
+                                        cr788_areaname = dpdn_Today_AreaSelect.Selected.Area
+                                    )
+                                },
+                                ForAll(
+                                    Sort(
+                                        ForAll(Distinct(
+                                            wthYesterday,
+                                            cr788_staffingcategory
+                                        ), {Result: ThisRecord.Value}),
+                                        Result
+                                    ) As staffCat,
+                                    {
+                                        StaffCat: staffCat.Result,
+                                        StaffCount: CountRows(
+                                            Filter(
+                                                wthYesterday,
+                                                cr788_staffingcategory = staffCat.Result
+                                            )
+                                        ),
+                                        ShiftType: ShiftType.Result,
+                                        EmployeeList: Concat(
+                                            SortByColumns(
+                                                Filter(
+                                                    wthYesterday,
+                                                    staffCat.Result = cr788_staffingcategory
+                                                ),
+                                                "cr788_shiftstarttime",
+                                                SortOrder.Ascending,
+                                                "cr788_shiftstoptime",
+                                                SortOrder.Ascending,
+                                                "cr788_employeename",
+                                                SortOrder.Ascending
+                                            ),
+                                            Concatenate(
+                                                cr788_shiftstarttime,
+                                                " - ",
+                                                cr788_shiftstoptime,
+                                                If(
+                                                    cr788_shiftstopdate <> cr788_shiftstartdate,
+                                                    Concatenate(
+                                                        " (Ends on ",
+                                                        Text(
+                                                            cr788_shiftstopdate,
+                                                            DateTimeFormat.ShortDate
+                                                        ),
+                                                        ")"
+                                                    )
+                                                ),
+                                                ": ",
+                                                cr788_opinits,
+                                                " - ",
+                                                cr788_employeename
+                                            ),
+                                            Char(10)
+                                        )
+                                    }
+                                )
+                            ),
+                            "TOMORROW",
+                            With(
+                                {
+                                    wthTomorrow: Filter(
+                                        wthManagementData,
+                                        Text(
+                                            cr788_shiftstartdate,
+                                            DateTimeFormat.ShortDate
+                                        ) = Text(
+                                            DateAdd(
+                                                nfxTestDate,
+                                                1
+                                            ),
+                                            DateTimeFormat.ShortDate
+                                        ),
+                                        cr788_shifttype = ShiftType.Result,
+                                        cr788_areaname = dpdn_Today_AreaSelect.Selected.Area
+                                    )
+                                },
+                                ForAll(
+                                    Sort(
+                                        ForAll(Distinct(
+                                            wthTomorrow,
+                                            cr788_staffingcategory
+                                        ), {Result: ThisRecord.Value}),
+                                        Result
+                                    ) As staffCat,
+                                    {
+                                        StaffCat: staffCat.Result,
+                                        StaffCount: CountRows(
+                                            Filter(
+                                                wthTomorrow,
+                                                cr788_staffingcategory = staffCat.Result
+                                            )
+                                        ),
+                                        ShiftType: ShiftType.Result,
+                                        EmployeeList: Concat(
+                                            SortByColumns(
+                                                Filter(
+                                                    wthTomorrow,
+                                                    staffCat.Result = cr788_staffingcategory
+                                                ),
+                                                "cr788_shiftstarttime",
+                                                SortOrder.Ascending,
+                                                "cr788_shiftstoptime",
+                                                SortOrder.Ascending,
+                                                "cr788_employeename",
+                                                SortOrder.Ascending
+                                            ),
+                                            Concatenate(
+                                                cr788_shiftstarttime,
+                                                " - ",
+                                                cr788_shiftstoptime,
+                                                If(
+                                                    cr788_shiftstopdate <> cr788_shiftstartdate,
+                                                    Concatenate(
+                                                        " (Ends on ",
+                                                        Text(
+                                                            cr788_shiftstopdate,
+                                                            DateTimeFormat.ShortDate
+                                                        ),
+                                                        ")"
+                                                    )
+                                                ),
+                                                ": ",
+                                                cr788_opinits,
+                                                " - ",
+                                                cr788_employeename
+                                            ),
+                                            Char(10)
+                                        )
+                                    }
+                                )
+                            )
+                        )
+                    },
+                    If(
+                        !IsBlank(wthShiftData),
+                        wthShiftData
+                    )
+                )
+            }
+        )
+    )
+);
+nfxScheduleTMU = With(
+    {
+        wthTMUData: Switch(
+            gblScheduleType,
+            "ARTCC",
+            nfxScheduleOnlyTMU,
+            "TWR",
+            nfxScheduleOnlyTMU,
+            "TRACON",
+            nfxScheduleOnlyTMU
+        )
+    },
+    With(
+        {
+            wthShiftTypes: ForAll(Distinct(
+                SortByColumns(
+                    Filter(
+                        wthTMUData,
+                        Text(
+                            cr788_shiftstartdate,
+                            DateTimeFormat.ShortDate
+                        ) = Switch(
+                            gblStaffingRef,
+                            "TODAY",
+                            Text(
+                                nfxTestDate,
+                                DateTimeFormat.ShortDate
+                            ),
+                            "YESTERDAY",
+                            Text(
+                                DateAdd(
+                                    nfxTestDate,
+                                    -1
+                                ),
+                                DateTimeFormat.ShortDate
+                            ),
+                            "TOMORROW",
+                            Text(
+                                DateAdd(
+                                    nfxTestDate,
+                                    1
+                                ),
+                                DateTimeFormat.ShortDate
+                            )
+                        )
+                    ),
+                    "cr788_shifttype",
+                    [
+                        "Early Morning",
+                        "Morning",
+                        "Mid-Day",
+                        "Evening",
+                        "Mid Shift"
+                    ]
+                ),
+                cr788_shifttype
+            ), {Result: ThisRecord.Value})
+        },
+        ForAll(
+            wthShiftTypes.Result As ShiftType,
+            {
+                ShiftType: ShiftType.Result,
+                ShiftData: With(
+                    {
+                        wthShiftData: Switch(
+                            gblStaffingRef,
+                            "TODAY",
+                            With(
+                                {
+                                    wthToday: Filter(
+                                        wthTMUData,
+                                        Text(
+                                            cr788_shiftstartdate,
+                                            DateTimeFormat.ShortDate
+                                        ) = Text(
+                                            nfxTestDate,
+                                            DateTimeFormat.ShortDate
+                                        ),
+                                        cr788_shifttype = ShiftType.Result,
+                                        cr788_areaname = dpdn_Today_AreaSelect.Selected.Area
+                                    )
+                                },
+                                ForAll(
+                                    Sort(
+                                        ForAll(Distinct(
+                                            wthToday,
+                                            cr788_staffingcategory
+                                        ), {Result: ThisRecord.Value}),
+                                        Result
+                                    ) As staffCat,
+                                    {
+                                        StaffCat: staffCat.Result,
+                                        StaffCount: CountRows(
+                                            Filter(
+                                                wthToday,
+                                                cr788_staffingcategory = staffCat.Result
+                                            )
+                                        ),
+                                        ShiftType: ShiftType.Result,
+                                        EmployeeList: Concat(
+                                            SortByColumns(
+                                                Filter(
+                                                    wthToday,
+                                                    staffCat.Result = cr788_staffingcategory
+                                                ),
+                                                "cr788_shiftstarttime",
+                                                SortOrder.Ascending,
+                                                "cr788_shiftstoptime",
+                                                SortOrder.Ascending,
+                                                "cr788_employeename",
+                                                SortOrder.Ascending
+                                            ),
+                                            Concatenate(
+                                                cr788_shiftstarttime,
+                                                " - ",
+                                                cr788_shiftstoptime,
+                                                If(
+                                                    cr788_shiftstopdate <> cr788_shiftstartdate,
+                                                    Concatenate(
+                                                        " (Ends on ",
+                                                        Text(
+                                                            cr788_shiftstopdate,
+                                                            DateTimeFormat.ShortDate
+                                                        ),
+                                                        ")"
+                                                    )
+                                                ),
+                                                ": ",
+                                                cr788_opinits,
+                                                " - ",
+                                                cr788_employeename
+                                            ),
+                                            Char(10)
+                                        )
+                                    }
+                                )
+                            ),
+                            "YESTERDAY",
+                            With(
+                                {
+                                    wthYesterday: Filter(
+                                        wthTMUData,
+                                        Text(
+                                            cr788_shiftstartdate,
+                                            DateTimeFormat.ShortDate
+                                        ) = Text(
+                                            DateAdd(
+                                                nfxTestDate,
+                                                -1
+                                            ),
+                                            DateTimeFormat.ShortDate
+                                        ),
+                                        cr788_shifttype = ShiftType.Result,
+                                        cr788_areaname = dpdn_Today_AreaSelect.Selected.Area
+                                    )
+                                },
+                                ForAll(
+                                    Sort(
+                                        ForAll(Distinct(
+                                            wthYesterday,
+                                            cr788_staffingcategory
+                                        ), {Result: ThisRecord.Value}),
+                                        Result
+                                    ) As staffCat,
+                                    {
+                                        StaffCat: staffCat.Result,
+                                        StaffCount: CountRows(
+                                            Filter(
+                                                wthYesterday,
+                                                cr788_staffingcategory = staffCat.Result
+                                            )
+                                        ),
+                                        ShiftType: ShiftType.Result,
+                                        EmployeeList: Concat(
+                                            SortByColumns(
+                                                Filter(
+                                                    wthYesterday,
+                                                    staffCat.Result = cr788_staffingcategory
+                                                ),
+                                                "cr788_shiftstarttime",
+                                                SortOrder.Ascending,
+                                                "cr788_shiftstoptime",
+                                                SortOrder.Ascending,
+                                                "cr788_employeename",
+                                                SortOrder.Ascending
+                                            ),
+                                            Concatenate(
+                                                cr788_shiftstarttime,
+                                                " - ",
+                                                cr788_shiftstoptime,
+                                                If(
+                                                    cr788_shiftstopdate <> cr788_shiftstartdate,
+                                                    Concatenate(
+                                                        " (Ends on ",
+                                                        Text(
+                                                            cr788_shiftstopdate,
+                                                            DateTimeFormat.ShortDate
+                                                        ),
+                                                        ")"
+                                                    )
+                                                ),
+                                                ": ",
+                                                cr788_opinits,
+                                                " - ",
+                                                cr788_employeename
+                                            ),
+                                            Char(10)
+                                        )
+                                    }
+                                )
+                            ),
+                            "TOMORROW",
+                            With(
+                                {
+                                    wthTomorrow: Filter(
+                                        wthTMUData,
+                                        Text(
+                                            cr788_shiftstartdate,
+                                            DateTimeFormat.ShortDate
+                                        ) = Text(
+                                            DateAdd(
+                                                nfxTestDate,
+                                                1
+                                            ),
+                                            DateTimeFormat.ShortDate
+                                        ),
+                                        cr788_shifttype = ShiftType.Result,
+                                        cr788_areaname = dpdn_Today_AreaSelect.Selected.Area
+                                    )
+                                },
+                                ForAll(
+                                    Sort(
+                                        ForAll(Distinct(
+                                            wthTomorrow,
+                                            cr788_staffingcategory
+                                        ), {Result: ThisRecord.Value}),
+                                        Result
+                                    ) As staffCat,
+                                    {
+                                        StaffCat: staffCat.Result,
+                                        StaffCount: CountRows(
+                                            Filter(
+                                                wthTomorrow,
+                                                cr788_staffingcategory = staffCat.Result
+                                            )
+                                        ),
+                                        ShiftType: ShiftType.Result,
+                                        EmployeeList: Concat(
+                                            SortByColumns(
+                                                Filter(
+                                                    wthTomorrow,
+                                                    staffCat.Result = cr788_staffingcategory
+                                                ),
+                                                "cr788_shiftstarttime",
+                                                SortOrder.Ascending,
+                                                "cr788_shiftstoptime",
+                                                SortOrder.Ascending,
+                                                "cr788_employeename",
+                                                SortOrder.Ascending
+                                            ),
+                                            Concatenate(
+                                                cr788_shiftstarttime,
+                                                " - ",
+                                                cr788_shiftstoptime,
+                                                If(
+                                                    cr788_shiftstopdate <> cr788_shiftstartdate,
+                                                    Concatenate(
+                                                        " (Ends on ",
+                                                        Text(
+                                                            cr788_shiftstopdate,
+                                                            DateTimeFormat.ShortDate
+                                                        ),
+                                                        ")"
+                                                    )
+                                                ),
+                                                ": ",
+                                                cr788_opinits,
+                                                " - ",
+                                                cr788_employeename
+                                            ),
+                                            Char(10)
+                                        )
+                                    }
+                                )
+                            )
+                        )
+                    },
+                    If(
+                        !IsBlank(wthShiftData),
+                        wthShiftData
+                    )
+                )
+            }
+        )
+    )
+);
+nfxCurrent = Filter(
+    'Eagle Eye Currencys',
+    And(
+        Facility = gblFacility,
+        'Area Name' = dpdn_Today_AreaSelect.Selected.Area,
+        Current = 1
+    )
+);
+nfxNotCurrent = Filter(
+    'Eagle Eye Currencys',
+    And(
+        Facility = gblFacility,
+        'Area Name' = dpdn_Today_AreaSelect.Selected.Area,
+        'Not Current' = 1
+    )
+);
+
+/*
+nfxPositionDataInitial = ShowColumns(
+    Filter(
+        'Eagle Eye Position Usages',
+        Facility = gblFacility,
+        'Position Name' <> "AVAILABLE"
+    ),
+    "cr788_areaname",
+    "cr788_employeename",
+    "cr788_facility",
+    "cr788_positionname",
+    "cr788_taskstarttime",
+    "cr788_taskstoptime",
+    "cr788_tasktype"
+);
+nfxPositionDataByArea = Filter(
+    nfxPositionDataInitial,
+    With(
+        {
+            wthLongAreaName: If(
+                StartsWith(
+                    cr788_areaname,
+                    gblFacility & "-"
+                ),
+                Right(
+                    cr788_areaname,
+                    Len(cr788_areaname) - 4
+                ),
+                cr788_areaname
+            )
+        },
+        wthLongAreaName = dpdn_Today_AreaSelect.Selected.Area
+    )
+);
+*/
+nfxUserSaveWeather = LookUp(
+    'Eagle Eye User Settings',
+    Name = User().Email,
+    SaveWeather
+);
+nfxUserRecord = LookUp(
+    'Eagle Eye User Area and Weathers',
+    And(
+        Facility = gblFacility,
+        FacilityArea = dpdn_Today_AreaSelect.Selected.Area,
+        Name = User().Email
+    )
+);
+nfxUserRecordWeatherString = Concat(
+    gblWxStations,
+    Result,
+    ","
+);
+nfxFacType = gblFacFilter;

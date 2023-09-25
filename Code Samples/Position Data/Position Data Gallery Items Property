@@ -1,0 +1,37 @@
+Switch(
+    dpdn_Today_AreaSelect_1.Selected.Value,
+    "ALL",
+    gblPositionData,
+    "TRAINING & CONCURRENT",
+    Filter(
+        gblPositionData,
+        With(
+            {
+                wthTooltip: Concat(
+                    Shape.Tooltip,
+                    Tooltip
+                )
+            },
+            Or(
+                "OJTDEV" in wthTooltip,
+                "CONCURRENT" in wthTooltip
+            )
+        )
+    ),
+    "TRAINING",
+    Filter(
+        gblPositionData,
+        "OJTDEV" in Concat(
+            Shape.Tooltip,
+            Tooltip
+        )
+    ),
+    "CONCURRENT",
+    Filter(
+        gblPositionData,
+        "CONCURRENT" in Concat(
+            Shape.Tooltip,
+            Tooltip
+        )
+    )
+)

@@ -1,0 +1,317 @@
+Concurrent(
+    UpdateContext(
+        {
+            ctxVisPIREP: true,
+            ctxVisMETAR: true,
+            ctxVisTAF: true,
+            ctxVisCWA: true,
+            ctxVisSIGMET: true
+        }
+    ),
+    Set(
+        gblControls,
+        "Locked"
+    )
+);
+Concurrent(
+    With(
+        {
+            wthFacString: If(
+                gblFacilityType = "TWR",
+                "K" & gblFacility,
+                Concat(
+                    cmb_Today_WxStation.SelectedItems,
+                    "K" & Result,
+                    ","
+                )
+            )
+        },
+        If(
+            Len(wthFacString) >= 2,
+            With(
+                {wthMetars: 'EagleEye-FetchMETAR'.Run(wthFacString)},
+                Set(
+                    gblMETAR,
+                    With(
+                        {
+                            wthMetarRecords: With(
+                                {wthRawMetar: Table(ParseJSON(wthMetars.metar))},
+                                ForAll(
+                                    wthRawMetar As report,
+                                    {
+                                        altim: Value(report.Value.altim),
+                                        clouds: ForAll(
+                                            Table(report.Value.clouds) As Clouds,
+                                            {
+                                                base: Value(Clouds.Value.base),
+                                                cover: Text(Clouds.Value.cover)
+                                            }
+                                        ),
+                                        dewp: Value(report.Value.dewp),
+                                        elev: Value(report.Value.elev),
+                                        icaoId: Text(report.Value.icaoId),
+                                        lat: Value(report.Value.lat),
+                                        lon: Value(report.Value.lon),
+                                        metar_id: Value(report.Value.metar_id),
+                                        metarType: Text(report.Value.metarType),
+                                        name: Text(report.Value.name),
+                                        obsTime: Value(report.Value.obsTime),
+                                        precip: Text(report.Value.precip),
+                                        rawOb: Text(report.Value.rawOb),
+                                        snow: Text(report.Value.snow),
+                                        temp: Value(report.Value.temp),
+                                        visib: Value(report.Value.visib),
+                                        wxString: Text(report.Value.wxString)
+                                    }
+                                )
+                            )
+                        },
+                        Switch(
+                            gblFacilityType,
+                            "ARTCC",
+                            wthMetarRecords,
+                            "TWR",
+                            First(wthMetarRecords),
+                            "TRACON",
+                            wthMetarRecords
+                        )
+                    )
+                );
+                Set(
+                    gblMetarDecoded,
+                    With(
+                        {wthDecodedValues: Table(ParseJSON(wthMetars.decodedmetar))},
+                        ForAll(
+                            wthDecodedValues As RawText,
+                            {
+                                icaoId: Text(RawText.Value.icaoId),
+                                decodedMetar: Text(RawText.Value.metarDecoded)
+                            }
+                        )
+                    )
+                )
+            ),
+            Concurrent(
+                Set(
+                    gblMETAR,
+                    Blank()
+                ),
+                Set(
+                    gblMetarDecoded,
+                    Blank()
+                )
+            )
+        )
+    );
+    UpdateContext({ctxVisMETAR: false}),
+    Concurrent(
+        Set(
+            gblTAF,
+            IfError(
+                Switch(
+                    gblFacilityType,
+                    "ARTCC",
+                    ForAll(
+                        IfError(
+                            AviationWeather.TAF(
+                                Concat(
+                                    cmb_Today_WxStation.SelectedItems,
+                                    "K" & Result,
+                                    ","
+                                ),
+                                "json"
+                            ),
+                            Blank()
+                        ) As TAF,
+                        {
+                            Station: TAF.icaoId,
+                            TAF: TAF.rawTAF
+                        }
+                    ),
+                    "TRACON",
+                    ForAll(
+                        AviationWeather.TAF(
+                            Concat(
+                                cmb_Today_WxStation.SelectedItems,
+                                "K" & Result,
+                                ","
+                            ),
+                            "json"
+                        ) As TAF,
+                        {
+                            Station: TAF.icaoId,
+                            TAF: TAF.rawTAF
+                        }
+                    ),
+                    "TWR",
+                    ForAll(
+                        AviationWeather.TAF(
+                            "K" & gblFacility,
+                            "json"
+                        ) As TAF,
+                        {
+                            Station: TAF.icaoId,
+                            TAF: TAF.rawTAF
+                        }
+                    )
+                ),
+                Blank()
+            )
+        ),
+        Set(
+            gblTAFdecoded,
+            IfError(
+    // Depending on the value of the gblFacilityType variable, make a different API call
+                Switch(
+                    gblFacilityType,
+        // If the facility type is "ARTCC"
+                    "ARTCC",
+        // Make an API call for the selected ARTCC facilities and return the first forecast
+                    With(
+                        {
+                            wthStations: Concat(
+                                cmb_Today_WxStation.SelectedItems,
+                                "K" & Result,
+                                ","
+                            )
+                        },
+            // Handle the error case where the AviationWeather.TAF function may return an error
+                        'EagleEye-FetchDecodedTAF'.Run(wthStations)
+                    ),
+        // If the facility type is "TRACON"
+                    "TRACON",
+        // Make an API call for the selected TRACON facilities and return the first forecast
+                    With(
+                        {
+                            wthStations: Concat(
+                                cmb_Today_WxStation.SelectedItems,
+                                "K" & Result,
+                                ","
+                            )
+                        },
+            // Handle the error case where the AviationWeather.TAF function may return an error
+                        'EagleEye-FetchDecodedTAF'.Run(wthStations)
+                    ),
+        // If the facility type is "TWR"
+                    "TWR",
+        // Make an API call for the selected TWR facility and return the first forecast
+// Handle the error case where the AviationWeather.TAF function may return an error
+                    'EagleEye-FetchDecodedTAF'.Run("K" & gblFacility)
+                ),
+    // If an error occurs, return blank
+                Blank()
+            )
+        )
+    );
+    
+// Update context variable to indicate that TAF data is not visible
+UpdateContext({ctxVisTAF: false}),
+    Set(
+        gblStagedPireps,
+        With(
+            {
+                wthFacString: If(
+                    gblFacilityType = "TWR",
+                    "K" & gblFacility,
+                    Concat(
+                        cmb_Today_WxStation.SelectedItems,
+                        "K" & Result,
+                        ","
+                    )
+                )
+            },
+            'EagleEye-FetchPIREP'.Run(
+                wthFacString,
+                "50"
+            )
+        )
+    );
+    Set(
+        gblSplitDecoded,
+        ForAll(
+            Filter(
+                Split(
+                    gblStagedPireps.decodedpirep,
+                    "PIREP Text: "
+                ),
+                !IsBlank(Value)
+            ) As Decoded,
+            {
+                rawText: Decoded.Value,
+                rawOb: First(
+                    Split(
+                        Decoded.Value,
+                        " Observed"
+                    )
+                ).Value
+            }
+        )
+    );
+    Set(
+        gblSplitRawOb,
+        ForAll(
+            Table(ParseJSON(gblStagedPireps.jsonpirep)) As Pirep,
+            Text(Pirep.Value.rawOb)
+        )
+    );
+    Set(
+        gblParsedPIREPs,
+        If(
+            Or(
+                gblFacilityType = "ARTCC",
+                gblFacilityType = "TRACON"
+            ),
+            ForAll(
+                gblSplitRawOb As Pirep,
+                {
+                    rawOb: Pirep.Value,
+                    decodedPirep: LookUp(
+                        gblSplitDecoded,
+                        Trim(Pirep.Value) = Trim(rawOb),
+                        rawText
+                    )
+                }
+            ),
+            Sort(
+                AviationWeather.PIREP(
+                    {
+                        id: "K" & gblFacility,
+                        distance: 50,
+                        format: "json"
+                    }
+                ),
+                obsTime
+            )
+        )
+    );
+    UpdateContext({ctxVisPIREP: false});
+    ,
+    Set(
+        gblCWA,//Pulls CWA for selected facility (ARTCC only)
+        AviationWeather.CWA(
+            gblFacility,
+            "json"
+        )
+    );
+    UpdateContext({ctxVisCWA: false}),
+    Set(
+        gblSIGMET,//Pulls SIGMETs for Selected facility
+        AviationWeather.AIRMETSIGMET(
+            gblFacility,
+            "json"
+        )
+    );
+    UpdateContext({ctxVisSIGMET: false})
+);
+Concurrent(
+    UpdateContext(
+        {
+            ctxLastWeather: Now(),
+            ctxWeatherTimerStart: true
+        }
+    ),
+    Set(
+        gblControls,
+        Blank()
+    )
+);

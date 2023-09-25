@@ -1,0 +1,336 @@
+UpdateContext(
+    {
+        nfxPositionDataByArea: With(
+            {
+                wthPositionDataInitial: ShowColumns(
+                    Filter(
+                        'Eagle Eye Position Usages',
+                        Facility = gblFacility,
+                        'Position Name' <> "AVAILABLE",
+                        'Eagle Eye Position Usages (Views)'.'Position Usages'
+                    ),
+                    "cr788_areaname",
+                    "cr788_employeename",
+                    "cr788_facility",
+                    "cr788_positionname",
+                    "burstbpa_taskstarttime",
+                    "burstbpa_taskstoptime",
+                    "cr788_tasktype"
+                )
+            },
+            Filter(
+                wthPositionDataInitial,
+                With(
+                    {
+                        wthLongAreaName: If(
+                            StartsWith(
+                                cr788_areaname,
+                                gblFacility & "-"
+                            ),
+                            Right(
+                                cr788_areaname,
+                                Len(cr788_areaname) - 4
+                            ),
+                            cr788_areaname
+                        )
+                    },
+                    wthLongAreaName = dpdn_Today_AreaSelect.Selected.Area
+                )
+            )
+        )
+    }
+);
+Set(
+    gblPositionData,
+    With(
+        {
+            wthPositionsMaster: RenameColumns(
+                Sort(
+                    ForAll(Distinct(
+                        nfxPositionDataByArea,
+                        cr788_positionname
+                    ), {Result: ThisRecord.Value}),
+                    Result
+                ),
+                "Result",
+                "Position Name"
+            )
+        },
+        With(
+            {
+                wthPositionTasks: ForAll(
+                    wthPositionsMaster As Positions,
+                    {
+                        PositionName: Positions.'Position Name',
+                        TaskHours: ForAll(
+                            Sequence(
+                                24,
+                                0,
+                                1
+                            ) As taskHour,
+                            {
+                                PositionName: Positions.'Position Name',
+                                TaskHour: taskHour.Value
+                            }
+                        )
+                    }
+                )
+            },
+            ForAll(
+                wthPositionTasks As Positions,
+                {
+                    PositionName: Positions.PositionName,
+                    TaskHistory: With(
+                        {wthPosUsage: nfxPositionDataByArea},
+                        Concat(
+                            Sort(
+                                ForAll(
+                                    Filter(
+                                        wthPosUsage,
+                                        cr788_positionname = Positions.PositionName
+                                    ) As PosUsage,
+                                    With(
+                                        {
+                                            wthTaskStart: ForAll(Split(
+                                                PosUsage.burstbpa_taskstarttime,
+                                                ":"
+                                            ), {Result: ThisRecord.Value}),
+                                            wthTaskStop: ForAll(Split(
+                                                PosUsage.burstbpa_taskstoptime,
+                                                ":"
+                                            ), {Result: ThisRecord.Value})
+                                        },
+                                        Concatenate(
+                                            First(wthTaskStart).Result,
+                                            Last(wthTaskStart).Result,
+                                            "-",
+                                            With(
+                                                {wthFormattedTaskStop: First(wthTaskStop).Result & Last(wthTaskStop).Result},
+                                                If(
+                                                    wthFormattedTaskStop = "0000",
+                                                    "2359",
+                                                    wthFormattedTaskStop
+                                                )
+                                            )
+                                        )
+                                    )
+                                ),
+                                Value(
+                                    Left(
+                                        Value,
+                                        2
+                                    )
+                                )
+                            ),
+                            Value,
+                            ", "
+                        )
+                    ),
+                    Shape: ForAll(
+                        Positions.TaskHours As TaskHours,
+                        With(
+                            {
+                                wthTaskTimes: With(
+                                    {wthPosUsage: nfxPositionDataByArea},
+                                    Sort(
+                                        ForAll(
+                                            Filter(
+                                                wthPosUsage,
+                                                cr788_positionname = Positions.PositionName
+                                            ) As PosUsage,
+                                            With(
+                                                {
+                                                    wthTaskStart: ForAll(Split(
+                                                        PosUsage.burstbpa_taskstarttime,
+                                                        ":"
+                                                    ), {Result: ThisRecord.Value}),
+                                                    wthTaskStop: ForAll(Split(
+                                                        PosUsage.burstbpa_taskstoptime,
+                                                        ":"
+                                                    ), {Result: ThisRecord.Value})
+                                                },
+                                                Concatenate(
+                                                    First(wthTaskStart).Result,
+                                                    Last(wthTaskStart).Result,
+                                                    "-",
+                                                    With(
+                                                        {wthFormattedTaskStop: First(wthTaskStop).Result & Last(wthTaskStop).Result},
+                                                        If(
+                                                            wthFormattedTaskStop = "0000",
+                                                            "2359",
+                                                            wthFormattedTaskStop
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        ),
+                                        Value(
+                                            Left(
+                                                Value,
+                                                2
+                                            )
+                                        )
+                                    )
+                                )
+                            },
+                            {
+                                Visible: If(
+                                    Or(
+                                        TaskHours.TaskHour in ForAll(
+                                            wthTaskTimes,
+                                            Value(
+                                                Left(
+                                                    Value,
+                                                    2
+                                                )
+                                            )
+                                        ),
+                                        TaskHours.TaskHour in ForAll(
+                                            wthTaskTimes,
+                                            Value(
+                                                Left(
+                                                    Right(
+                                                        Value,
+                                                        4
+                                                    ),
+                                                    2
+                                                )
+                                            )
+                                        ),
+                                        If(
+                                            TaskHours.TaskHour in ForAll(
+                                                wthTaskTimes As Task,
+                                                If(
+                                                    And(
+                                                        TaskHours.TaskHour <= Value(
+                                                            Left(
+                                                                Right(
+                                                                    Task.Value,
+                                                                    4
+                                                                ),
+                                                                2
+                                                            )
+                                                        ),
+                                                        TaskHours.TaskHour >= Value(
+                                                            Left(
+                                                                Task.Value,
+                                                                2
+                                                            )
+                                                        )
+                                                    ),
+                                                    TaskHours.TaskHour
+                                                )
+                                            ),
+                                            true
+                                        )
+                                    ),
+                                    true,
+                                    false
+                                ),
+                                Tooltip: Concat(
+                                    ForAll(
+                                        RenameColumns(
+                                            ForAll(Distinct(
+                                                wthTaskTimes,
+                                                Value
+                                            ), {Result: ThisRecord.Value}),
+                                            "Result",
+                                            "Value"
+                                        ) As TaskTimes,
+                                        If(
+                                            Or(
+                                                TaskHours.TaskHour = Value(
+                                                    Left(
+                                                        TaskTimes.Value,
+                                                        2
+                                                    )
+                                                ),
+                                                TaskHours.TaskHour = Value(
+                                                    Left(
+                                                        Right(
+                                                            TaskTimes.Value,
+                                                            4
+                                                        ),
+                                                        2
+                                                    )
+                                                ),
+                                                And(
+                                                    TaskHours.TaskHour <= Value(
+                                                        Left(
+                                                            Right(
+                                                                TaskTimes.Value,
+                                                                4
+                                                            ),
+                                                            2
+                                                        )
+                                                    ),
+                                                    TaskHours.TaskHour >= Value(
+                                                        Left(
+                                                            TaskTimes.Value,
+                                                            2
+                                                        )
+                                                    )
+                                                )
+                                            ),
+                                            Concatenate(
+                                                TaskTimes.Value,
+                                                Char(10),
+                                                Concat(
+                                                    With(
+                                                        {
+                                                            wthTaskStart: With(
+                                                                {
+                                                                    wthSplitTasks: First(
+                                                                        ForAll(Split(
+                                                                            TaskTimes.Value,
+                                                                            "-"
+                                                                        ), {Result: ThisRecord.Value})
+                                                                    )
+                                                                },
+                                                                Concatenate(
+                                                                    Left(
+                                                                        wthSplitTasks.Result,
+                                                                        2
+                                                                    ),
+                                                                    ":",
+                                                                    Right(
+                                                                        wthSplitTasks.Result,
+                                                                        2
+                                                                    )
+                                                                )
+                                                            )
+                                                        },
+                                                        Filter(
+                                                            nfxPositionDataByArea,
+                                                            cr788_positionname = Positions.PositionName,
+                                                            burstbpa_taskstarttime = wthTaskStart
+                                                        )
+                                                    ),
+                                                    cr788_employeename & If(
+                                                        cr788_tasktype = "CONCURRENT",
+                                                        "; CONCURRENT",
+                                                        cr788_tasktype = "OJTDEV",
+                                                        "; OJTDEV"
+                                                    ),
+                                                    Char(10)
+                                                )
+                                            )
+                                        )
+                                    ),
+                                    Value,
+                                    Char(10)
+                                )
+                            }
+                        )
+                    )
+                }
+            )
+        )
+    )
+);
+Select(btn_Today_GetTraffic);
+UpdateContext({ctxPositionData: false});
+Set(
+    gblControls,
+    Blank()
+);
