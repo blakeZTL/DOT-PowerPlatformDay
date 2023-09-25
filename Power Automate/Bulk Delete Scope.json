@@ -1,0 +1,119 @@
+{
+    "brandColor": "#8C3900",
+    "connectionReferences": {
+        "shared_commondataserviceforapps_2": {
+            "connection": {
+                "id": "/burstbpa_APPAJTBURSTBPADataverseConnRef"
+            }
+        },
+        "shared_office365_1": {
+            "connection": {
+                "id": "/burstbpa_sharedoffice365_12ee2"
+            }
+        }
+    },
+    "connectorDisplayName": "Control",
+    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KIDxwYXRoIGQ9Im0wIDBoMzJ2MzJoLTMyeiIgZmlsbD0iIzhDMzkwMCIvPg0KIDxwYXRoIGQ9Im04IDEwaDE2djEyaC0xNnptMTUgMTF2LTEwaC0xNHYxMHptLTItOHY2aC0xMHYtNnptLTEgNXYtNGgtOHY0eiIgZmlsbD0iI2ZmZiIvPg0KPC9zdmc+DQo=",
+    "id": "73c008f1-6ebc-45c9-822e-45d3abf0e32f",
+    "isTrigger": false,
+    "operationDefinition": {
+        "actions": {
+            "Filter_Set": {
+                "actions": {
+                    "Bulk_Deletion_with_Conditions": {
+                        "inputs": {
+                            "authentication": "@parameters('$authentication')",
+                            "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                                "connectionName": "shared_commondataserviceforapps_2",
+                                "operationId": "PerformUnboundAction"
+                            },
+                            "parameters": {
+                                "actionName": "BulkDelete",
+                                "item/CCRecipients": [
+                                ],
+                                "item/JobName": "PositionUsage.@{utcNow()}",
+                                "item/QuerySet": [
+                                    {
+                                        "Criteria": {
+                                            "Conditions": [
+                                                "@outputs('Conditions')"
+                                            ],
+                                            "FilterOperator": "@{outputs('Filter_Operation')}"
+                                        },
+                                        "EntityName": "cr788_ee_positionusage"
+                                    }
+                                ],
+                                "item/RecurrencePattern": "@base64ToString('')",
+                                "item/RunNow": false,
+                                "item/SendEmailNotification": false,
+                                "item/StartDateTime": "@utcNow()",
+                                "item/ToRecipients": [
+                                ]
+                            }
+                        },
+                        "metadata": {
+                            "operationMetadataId": "fed9fd83-eb5b-4c76-9232-0279c6e2552c"
+                        },
+                        "runAfter": {
+                            "Conditions": [
+                                "Succeeded"
+                            ]
+                        },
+                        "type": "OpenApiConnection"
+                    },
+                    "Conditions": {
+                        "description": "A comma separated set of JSON objects. If you do not need to filter the job, then make this field an empty object. (i.e. {} )",
+                        "inputs": {
+                            "AttributeName": "createdon",
+                            "Operator": "LessThan",
+                            "Values": [
+                                {
+                                    "Type": "System.DateTime",
+                                    "Value": "@{formatDateTime(utcNow(),'yyyy-MM-dd')}"
+                                }
+                            ]
+                        },
+                        "metadata": {
+                            "operationMetadataId": "67e4497b-a1cd-4e93-a556-5773b74847d8"
+                        },
+                        "runAfter": {
+                            "Filter_Operation": [
+                                "Succeeded"
+                            ]
+                        },
+                        "type": "Compose"
+                    },
+                    "Filter_Operation": {
+                        "description": "And or Or Only",
+                        "inputs": "And",
+                        "metadata": {
+                            "operationMetadataId": "26a8b9b3-7787-4ea6-ba97-c023aa69409f"
+                        },
+                        "runAfter": {
+                        },
+                        "type": "Compose"
+                    }
+                },
+                "description": "Choices need to be referenced by their Value not their label along with a type of Int32. Filtering based on a lookup column will require the GUID value of the lookup value of type Int32.",
+                "metadata": {
+                    "operationMetadataId": "24551d15-c902-4ace-ba26-3b6d01a45981"
+                },
+                "runAfter": {
+                },
+                "type": "Scope"
+            }
+        },
+        "description": "Copy this scope into your flow for use. The Table Name and Job Name will have to be initialized outside this scope.",
+        "metadata": {
+            "operationMetadataId": "86074ab5-f4e9-4fc3-9608-deac8ae90dad"
+        },
+        "runAfter": {
+            "Update_Report_Status": [
+                "Succeeded"
+            ]
+        },
+        "type": "Scope"
+    },
+    "operationName": "Bulk_Delete_Job"
+}

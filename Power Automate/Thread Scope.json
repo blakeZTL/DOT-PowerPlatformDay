@@ -1,0 +1,177 @@
+{
+    "brandColor": "#8C3900",
+    "connectionReferences": {
+        "shared_commondataserviceforapps_2": {
+            "connection": {
+                "id": "/burstbpa_APPAJTBURSTBPADataverseConnRef"
+            }
+        },
+        "shared_office365_1": {
+            "connection": {
+                "id": "/burstbpa_sharedoffice365_12ee2"
+            }
+        }
+    },
+    "connectorDisplayName": "Control",
+    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KIDxwYXRoIGQ9Im0wIDBoMzJ2MzJoLTMyeiIgZmlsbD0iIzhDMzkwMCIvPg0KIDxwYXRoIGQ9Im04IDEwaDE2djEyaC0xNnptMTUgMTF2LTEwaC0xNHYxMHptLTItOHY2aC0xMHYtNnptLTEgNXYtNGgtOHY0eiIgZmlsbD0iI2ZmZiIvPg0KPC9zdmc+DQo=",
+    "id": "66256605-3eae-46c1-8b78-16c58a7704b9",
+    "isTrigger": false,
+    "operationDefinition": {
+        "actions": {
+            "Filter_array_-_ARTCC": {
+                "description": "Custom Business logic. Can be removed but references below need to be changed.",
+                "inputs": {
+                    "from": "@body('Remove_Blank_NDC_Emp_Ids')",
+                    "where": "@startsWith(item()?['cr788_facility'], 'Z')"
+                },
+                "metadata": {
+                    "operationMetadataId": "6fe338c2-7d41-4963-b646-63ec2ae40f7e"
+                },
+                "runAfter": {
+                },
+                "type": "Query"
+            },
+            "Threaded_Dataverse_Batch_ARTCC": {
+                "actions": {
+                    "Thread_Iteration_ARTCC": {
+                        "actions": {
+                            "Iterate_Through_Threads_2": {
+                                "actions": {
+                                    "Parse_and_Send_Thread_ARTCC": {
+                                        "actions": {
+                                            "Batch_Data_2": {
+                                                "inputs": "@join(item(), decodeUriComponent('%0A'))",
+                                                "metadata": {
+                                                    "operationMetadataId": "231f1c02-e9fa-4b8c-9177-6eee6a68a5da"
+                                                },
+                                                "runAfter": {
+                                                },
+                                                "type": "Compose"
+                                            },
+                                            "Send_Batch_Thread_2": {
+                                                "inputs": {
+                                                    "authentication": {
+                                                        "audience": "@{outputs('Settings')['audience']}",
+                                                        "authority": "@{outputs('Settings')['authority']}",
+                                                        "clientId": "@{outputs('Settings')['clientId']}",
+                                                        "secret": "@{outputs('Settings')['clientSecret']}",
+                                                        "tenant": "@{outputs('Settings')['tenantId']}",
+                                                        "type": "ActiveDirectoryOAuth"
+                                                    },
+                                                    "body": "--batch_@{actions('Settings')?['trackedProperties/changeSetGUID']}\nContent-Type: multipart/mixed;boundary=changeset_@{actions('Settings')?['trackedProperties/changeSetGUID']}\n\n\n@{outputs('Batch_Data_2')}\n\n--changeset_@{actions('Settings')?['trackedProperties/changeSetGUID']}--\n--batch_@{actions('Settings')?['trackedProperties/changeSetGUID']}--",
+                                                    "headers": {
+                                                        "Accept": "application/json",
+                                                        "Content-Type": "multipart/mixed;boundary=batch_@{actions('Settings')?['trackedProperties/changeSetGUID']}"
+                                                    },
+                                                    "method": "POST",
+                                                    "uri": "@{outputs('Settings')['org']}/api/data/v9.2/$batch"
+                                                },
+                                                "metadata": {
+                                                    "operationMetadataId": "a382e3cb-e0cb-4e80-9368-dce4bd58c264"
+                                                },
+                                                "runAfter": {
+                                                    "Batch_Data_2": [
+                                                        "Succeeded"
+                                                    ]
+                                                },
+                                                "type": "Http"
+                                            }
+                                        },
+                                        "metadata": {
+                                            "operationMetadataId": "aaa7ecc2-62ba-4ab3-9e49-67e2c01319e8"
+                                        },
+                                        "runAfter": {
+                                        },
+                                        "type": "Scope"
+                                    }
+                                },
+                                "foreach": "@if(equals(variables('varItemCountARTCC'), 0), json('[]'), createArray(take(body('Breakdown_Threads_2'), div(length(body('Breakdown_Threads_2')), 2)), skip(body('Breakdown_Threads_2'), div(length(body('Breakdown_Threads_2')), 2))))",
+                                "metadata": {
+                                    "operationMetadataId": "ff0afc67-e23b-4ebc-9783-71f98540add9"
+                                },
+                                "runAfter": {
+                                },
+                                "runtimeConfiguration": {
+                                    "concurrency": {
+                                        "repetitions": 10
+                                    }
+                                },
+                                "type": "Foreach"
+                            }
+                        },
+                        "metadata": {
+                            "operationMetadataId": "d8b72512-ddc8-43a9-ac29-e54f5a604f8c"
+                        },
+                        "runAfter": {
+                            "Thread_Prep_ARTCC": [
+                                "Succeeded"
+                            ]
+                        },
+                        "type": "Scope"
+                    },
+                    "Thread_Prep_ARTCC": {
+                        "actions": {
+                            "Breakdown_Threads_2": {
+                                "inputs": {
+                                    "from": "@take(skip(body('Filter_array_-_ARTCC'), mul(outputs('Settings')['batchSize'], iterationIndexes('Threaded_Dataverse_Batch_ARTCC'))), outputs('Settings')['batchSize'])",
+                                    "select": "@replace(replace(outputs('Template'), '|RowData|', string(item())), '|ID|', string(rand(1, 9999999)))"
+                                },
+                                "metadata": {
+                                    "operationMetadataId": "50325599-23f7-4971-9857-cc1f48541f24"
+                                },
+                                "runAfter": {
+                                },
+                                "type": "Select"
+                            },
+                            "Set_variable_-_varItemCountARTCC": {
+                                "inputs": {
+                                    "name": "varItemCountARTCC",
+                                    "value": "@length(body('Breakdown_Threads_2'))"
+                                },
+                                "metadata": {
+                                    "operationMetadataId": "2d3fea73-c356-4db0-83a4-83ded7808797"
+                                },
+                                "runAfter": {
+                                    "Breakdown_Threads_2": [
+                                        "Succeeded"
+                                    ]
+                                },
+                                "type": "SetVariable"
+                            }
+                        },
+                        "metadata": {
+                            "operationMetadataId": "09517a33-2d1a-466a-bd5f-ca8f76a0c431"
+                        },
+                        "runAfter": {
+                        },
+                        "type": "Scope"
+                    }
+                },
+                "expression": "@equals(variables('varItemCountARTCC'), 0)",
+                "limit": {
+                    "count": 110,
+                    "timeout": "PT1H"
+                },
+                "metadata": {
+                    "operationMetadataId": "7680d28d-2ebf-44af-9fef-af9e918c87b1"
+                },
+                "runAfter": {
+                    "Filter_array_-_ARTCC": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Until"
+            }
+        },
+        "metadata": {
+            "operationMetadataId": "ca1bb246-c709-4f02-9413-b7d51222bbc5"
+        },
+        "runAfter": {
+            "Initialize_variable_-_varItemCountARTCC": [
+                "Succeeded"
+            ]
+        },
+        "type": "Scope"
+    },
+    "operationName": "ARTCC_Threads"
+}

@@ -1,0 +1,64 @@
+{
+    "brandColor": "#8C3900",
+    "connectionReferences": {
+        "shared_commondataserviceforapps_2": {
+            "connection": {
+                "id": "/burstbpa_APPAJTBURSTBPADataverseConnRef"
+            }
+        },
+        "shared_office365_1": {
+            "connection": {
+                "id": "/burstbpa_sharedoffice365_12ee2"
+            }
+        }
+    },
+    "connectorDisplayName": "Control",
+    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KIDxwYXRoIGQ9Im0wIDBoMzJ2MzJoLTMyeiIgZmlsbD0iIzhDMzkwMCIvPg0KIDxwYXRoIGQ9Im04IDEwaDE2djEyaC0xNnptMTUgMTF2LTEwaC0xNHYxMHptLTItOHY2aC0xMHYtNnptLTEgNXYtNGgtOHY0eiIgZmlsbD0iI2ZmZiIvPg0KPC9zdmc+DQo=",
+    "id": "cdc9a818-63c5-4f32-a613-bda42269eed3",
+    "isTrigger": false,
+    "operationDefinition": {
+        "actions": {
+            "Settings": {
+                "description": "Requires an Azure Registered Application",
+                "inputs": {
+                    "audience": "@{parameters('Eagle Eye Environment URL (burstbpa_EnvironmentURL)')}/",
+                    "authority": "https://login.microsoftonline.com",
+                    "batchSize": 1000,
+                    "clientId": "CLIENT ID HERE",
+                    "clientSecret": "CLIENT SECRET HERE",
+                    "entity": "TABLE LOGICAL PLURAL NAME HERE FOLLOWED BY A SPACE ",
+                    "org": "@{parameters('Eagle Eye Environment URL (burstbpa_EnvironmentURL)')}",
+                    "tenantId": "TENANT ID HERE"
+                },
+                "metadata": {
+                    "operationMetadataId": "afa51b73-3211-4fd8-b9a5-bd216061e21b"
+                },
+                "runAfter": {
+                },
+                "type": "Compose"
+            },
+            "Template": {
+                "inputs": "--changeset_@{actions('Settings')?['trackedProperties/changeSetGUID']}\nContent-Type: application/http\nContent-Transfer-Encoding: binary\nContent-ID: |ID|\n\nPOST  @{outputs('Settings')['org']}/api/data/v9.2/@{outputs('Settings')['entity']}HTTP/1.1\nContent-Type: application/json; charset=utf-8\n\n|RowData|",
+                "metadata": {
+                    "operationMetadataId": "e32d47d9-322f-4d42-8b18-efdb9dde56f0"
+                },
+                "runAfter": {
+                    "Settings": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Compose"
+            }
+        },
+        "metadata": {
+            "operationMetadataId": "0719c2f8-3ff2-4cd3-80e7-d8225726bb5c"
+        },
+        "runAfter": {
+            "Parse_CSV_to_Dataverse_JSON": [
+                "Succeeded"
+            ]
+        },
+        "type": "Scope"
+    },
+    "operationName": "BATCH_Prep"
+}
